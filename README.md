@@ -1,5 +1,5 @@
 # Discovery tool for Discovering MariaDB Server
-This is a small golang application build for querying the [consul](https://github.com/gliderlabs/docker-consul) catalog API and returning a comma-seperated-list containing service addresses. This application is not production ready.
+This is a small golang application build for querying the [consul](https://github.com/gliderlabs/docker-consul) catalog API and returning a comma-seperated-list containing service addresses.
 
 ## Parameters
 - `-address` - The address were consul is running. Eq: `consul:8500`

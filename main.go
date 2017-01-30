@@ -13,7 +13,7 @@ var service = flag.String("service", "", "Service is the service we are searchin
 var debug = flag.Bool("debug", false, "Debug is for printing debug log.")
 var version = flag.Bool("version", false, "Get version of tool")
 
-const versionString string = "0.3"
+const versionString string = "0.4"
 
 func main() {
 	flag.Parse()
@@ -62,7 +62,7 @@ func main() {
 // consulAPI accepts an address and return the Catalog interface from the consul API
 func consulAPI(address string) (*api.Catalog, error) {
 	conf := api.DefaultConfig()
-	conf.Address = "192.168.99.117:8500"
+	conf.Address = address
 
 	client, err := api.NewClient(conf)
 	if err != nil {
