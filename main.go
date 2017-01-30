@@ -1,79 +1,72 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
+
+	"github.com/hashicorp/consul/api"
 )
 
-var host = flag.String("h", "consul:8500", "Host[:port] for consul server")
-var serviceName = flag.String("servicename", "", "Name of the service in consul")
+var address = flag.String("address", "consul:8500", "Address is the address of the Consul server")
+var service = flag.String("service", "", "Service is the service we are searching for")
+var debug = flag.Bool("debug", false, "Debug is for printing debug log.")
+var version = flag.Bool("version", false, "Get version of tool")
+
+const versionString string = "0.3"
 
 func main() {
-
-	version := "0.0.1"
-	log.Printf("Starting discovery tool %s ...", version)
-
 	flag.Parse()
 
-	log.Printf("Nice %v \n", *serviceName)
-	if len(*serviceName) < 1 {
-		log.Fatal(string("servicename is manadatory"))
+	// print version and stop
+	if *version {
+		log.Printf("Discovery tool version %v", versionString)
+		return
 	}
 
-	// TODO search for tag
-	// TODO think about searching in DNS record
+	// making sure service parameter is provided
+	if len(*service) < 1 {
+		log.Fatal(string("service is manadatory"))
+	}
 
-	url := fmt.Sprintf("http://%v/v1/catalog/service/%v", *host, *serviceName)
-	log.Printf("Get service catalog %v", url)
+	// setup the consul API interface
+	api, err := consulAPI(*address)
+	if err != nil {
+		log.Fatalf("[Error] Error creating client: %v", err)
+	}
 
-	request("GET", url, []byte(string("")), func(res *http.Response) {
-		data, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			log.Fatal(err)
-			return
+	// query the consul catalog for services
+	services, _, err := api.Service(*service, "", nil)
+	if err != nil {
+		log.Fatalf("[Error] Error querying catalog entries: %v", err)
+	}
+
+	// contains results
+	var result = ""
+
+	// iterate over each service and create a comma-seperated-string containing all service addresses.
+	for i, service := range services {
+		if i+1 < len(services) {
+			// NOT LAST index
+			result += fmt.Sprintf("%v,", service.ServiceAddress)
+		} else {
+			// LAST index
+			result += fmt.Sprintf("%v", service.ServiceAddress)
 		}
+	}
 
-		type itemdata []interface{}
-		var datas itemdata
-
-		json.Unmarshal(data, &datas)
-
-		for i := 0; i < len(datas); i++ {
-			m := datas[i].(map[string]interface{})
-			if i+1 < len(datas) {
-				// NOT LAST
-				fmt.Printf("%v,", m["ServiceAddress"])
-			} else {
-				// LAST
-				fmt.Printf("%v\n", m["ServiceAddress"])
-			}
-		}
-	})
-
+	// print to standard output
+	fmt.Println(result)
 }
 
-func request(method, url string, body []byte, cb func(*http.Response)) error {
+// consulAPI accepts an address and return the Catalog interface from the consul API
+func consulAPI(address string) (*api.Catalog, error) {
+	conf := api.DefaultConfig()
+	conf.Address = "192.168.99.117:8500"
 
-	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
+	client, err := api.NewClient(conf)
 	if err != nil {
-		log.Println("Error creating request: " + err.Error())
-		return err
+		return nil, err
 	}
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Println("Error executing request: " + err.Error())
-		return err
-	}
-
-	// callback
-	cb(resp)
-
-	//return
-	return nil
+	return client.Catalog(), nil
 }
